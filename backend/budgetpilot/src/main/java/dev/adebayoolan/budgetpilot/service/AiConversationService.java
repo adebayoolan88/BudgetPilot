@@ -17,16 +17,15 @@ public class AiConversationService {
     private final AiConversationRepository aiConversationRepository;
     private final UserRepository userRepository;
 
-    public AiConversation createConversation(UUID userId, String message, String response) {
+    public AiConversation createConversation(UUID userId, String message) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
         AiConversation conversation = new AiConversation();
 
         conversation.setUser(user);
         conversation.setMessage(message);
-        conversation.setResponse(response);
         conversation.setCreatedAt(LocalDateTime.now());
-
+        conversation.setResponse(""); // placeholder until Claude integration
         return aiConversationRepository.save(conversation);
     }
 

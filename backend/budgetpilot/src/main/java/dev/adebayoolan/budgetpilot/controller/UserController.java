@@ -1,5 +1,7 @@
 package dev.adebayoolan.budgetpilot.controller;
 
+import dev.adebayoolan.budgetpilot.dto.CreateUser;
+import dev.adebayoolan.budgetpilot.dto.UpdateUser;
 import dev.adebayoolan.budgetpilot.model.User;
 import dev.adebayoolan.budgetpilot.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +18,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
+    public ResponseEntity<User> createUser(@RequestBody CreateUser user) {
         User created = userService.createUser(
                 user.getClerkId(),
                 user.getEmail(),
@@ -36,5 +38,11 @@ public class UserController {
         return userService.getUserByClerkId(clerkId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable UUID id, @RequestBody UpdateUser request) {
+        User updated = userService.updateUser(id, request.getFirstName(), request.getLastName());
+        return ResponseEntity.ok(updated);
     }
 }

@@ -38,4 +38,12 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found with id"));
     }
 
+    public User updateUser(UUID id, String firstName, String lastName) {
+        User user = getUserById(id);
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+
 }
