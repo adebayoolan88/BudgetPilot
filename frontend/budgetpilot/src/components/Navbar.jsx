@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Link } from "react-router-dom"
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/react"
 
 function Navbar() {
   return (
@@ -20,12 +21,21 @@ function Navbar() {
 
         {/* Buttons */}
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" className="text-slate-300 hover:text-white">
-            Sign In
-          </Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            Get Started
-          </Button>
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <Button variant="ghost" className="text-slate-300 hover:text-white">
+                Sign In
+              </Button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                Get Started
+              </Button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
         </div>
 
       </div>
