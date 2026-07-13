@@ -65,6 +65,19 @@ public class TransactionService {
         return transactionRepository.findByUserAndDateBetween(user, start, end);
     }
 
+    public Transaction updateTransaction(UUID id, UUID categoryId, BigDecimal amount, String description,
+            LocalDate date) {
+        Transaction transaction = getTransactionById(id);
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        transaction.setCategory(category);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transaction.setDate(date);
+        return transactionRepository.save(transaction);
+    }
+
     public void deleteTransaction(UUID id) {
         transactionRepository.deleteById(id);
     }

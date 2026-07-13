@@ -2,6 +2,8 @@ package dev.adebayoolan.budgetpilot.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import dev.adebayoolan.budgetpilot.dto.CreateExpense;
 import dev.adebayoolan.budgetpilot.dto.UpdateExpense;
 import dev.adebayoolan.budgetpilot.model.Expense;
+import dev.adebayoolan.budgetpilot.security.AuthenticatedUserService;
 import dev.adebayoolan.budgetpilot.service.ExpenseService;
 import lombok.RequiredArgsConstructor;
 
@@ -26,9 +29,12 @@ import java.util.UUID;
 public class ExpenseController {
 
     private final ExpenseService expenseService;
+    private final AuthenticatedUserService authenticatedUserService;
 
     @PostMapping("")
-    public ResponseEntity<Expense> createExpense(@RequestBody CreateExpense request) {
+    public ResponseEntity<Expense> createExpense(@AuthenticationPrincipal Jwt jwt, @RequestBody CreateExpense request) {
+        authenticatedUserService.requireOwnership(jwt, request.getUserId());
+
         Expense expense = expenseService.createExpense(
                 request.getUserId(),
                 request.getCategoryId(),
@@ -42,32 +48,43 @@ public class ExpenseController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteExpense(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteExpense(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        Expense expense = expenseService.getExpenseById(id);
+        authenticatedUserService.requireOwnership(jwt, expense.getUser().getId());
+
         expenseService.deleteExpenseById(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Expense> getExpense(@PathVariable UUID id) {
+    public ResponseEntity<Expense> getExpense(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         Expense expense = expenseService.getExpenseById(id);
+        authenticatedUserService.requireOwnership(jwt, expense.getUser().getId());
         return ResponseEntity.ok(expense);
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Expense>> getUserExpenses(@PathVariable UUID userId) {
+    public ResponseEntity<List<Expense>> getUserExpenses(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID userId) {
+        authenticatedUserService.requireOwnership(jwt, userId);
         List<Expense> expense = expenseService.getExpenseByUser(userId);
         return ResponseEntity.ok(expense);
     }
 
     @GetMapping("/user/{userId}/category/{categoryId}")
-    public ResponseEntity<List<Expense>> getUserExpensesByCategory(@PathVariable UUID userId,
+    public ResponseEntity<List<Expense>> getUserExpensesByCategory(@AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID userId,
             @PathVariable UUID categoryId) {
+        authenticatedUserService.requireOwnership(jwt, userId);
         List<Expense> expense = expenseService.getExpenseByUserAndCategory(userId, categoryId);
         return ResponseEntity.ok(expense);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Expense> updateExpense(@PathVariable UUID id, @RequestBody UpdateExpense request) {
+    public ResponseEntity<Expense> updateExpense(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+            @RequestBody UpdateExpense request) {
+        Expense existing = expenseService.getExpenseById(id);
+        authenticatedUserService.requireOwnership(jwt, existing.getUser().getId());
+
         Expense expense = expenseService.updateExpense(
                 id,
                 request.getName(),

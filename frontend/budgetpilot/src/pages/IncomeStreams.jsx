@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { useApi } from "@/services/api"
-import { expenseService } from "@/services/expenseService"
-import { categoryService } from "@/services/categoryService"
+import { incomeStreamService } from "@/services/incomeStreamService"
 import { useCurrentUser } from "@/context/CurrentUserContext"
 import { formatCurrency, toMonthlyAmount, FREQUENCY_OPTIONS } from "@/lib/format"
 import { Button } from "@/components/ui/button"
@@ -18,60 +17,44 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Trash2, Pencil, Plus } from "lucide-react"
 
-const emptyForm = {
-  name: "",
-  amount: "",
-  categoryId: "",
-  frequency: "monthly",
-  dueDate: "",
-  isRecurring: true,
-}
+const emptyForm = { name: "", amount: "", frequency: "monthly" }
 
-function Expenses() {
+function IncomeStreams() {
   const api = useApi()
   const currentUser = useCurrentUser()
-  const [expenses, setExpenses] = useState([])
-  const [categories, setCategories] = useState([])
+  const [incomeStreams, setIncomeStreams] = useState([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
 
-  async function loadData() {
-    const [expenseData, categoryData] = await Promise.all([
-      expenseService.getAllForUser(api, currentUser.id),
-      categoryService.getDefaults(api),
-    ])
-    setExpenses(expenseData)
-    setCategories(categoryData)
+  async function loadIncomeStreams() {
+    const data = await incomeStreamService.getAllForUser(api, currentUser.id)
+    setIncomeStreams(data)
     setLoading(false)
   }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount
-    loadData()
+    loadIncomeStreams()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function openCreateDialog() {
     setEditingId(null)
-    setForm({ ...emptyForm, categoryId: categories[0]?.id ?? "" })
+    setForm(emptyForm)
     setDialogOpen(true)
   }
 
-  function openEditDialog(expense) {
-    setEditingId(expense.id)
+  function openEditDialog(incomeStream) {
+    setEditingId(incomeStream.id)
     setForm({
-      name: expense.name,
-      amount: expense.amount,
-      categoryId: expense.category?.id ?? "",
-      frequency: expense.frequency,
-      dueDate: expense.dueDate ?? "",
-      isRecurring: Boolean(expense.isRecurring),
+      name: incomeStream.name,
+      amount: incomeStream.amount,
+      frequency: incomeStream.frequency,
     })
     setDialogOpen(true)
   }
@@ -82,74 +65,59 @@ function Expenses() {
     try {
       const payload = {
         userId: currentUser.id,
-        categoryId: form.categoryId,
         name: form.name,
         amount: Number(form.amount),
         frequency: form.frequency,
-        dueDate: form.dueDate || null,
-        isRecurring: form.isRecurring,
       }
       if (editingId) {
-        await expenseService.update(api, editingId, payload)
+        await incomeStreamService.update(api, editingId, payload)
       } else {
-        await expenseService.create(api, payload)
+        await incomeStreamService.create(api, payload)
       }
       setDialogOpen(false)
-      await loadData()
+      await loadIncomeStreams()
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id) {
-    await expenseService.delete(api, id)
-    await loadData()
+    await incomeStreamService.delete(api, id)
+    await loadIncomeStreams()
   }
 
-  const totalMonthly = expenses.reduce((sum, expense) => sum + toMonthlyAmount(expense.amount, expense.frequency), 0)
+  const totalMonthly = incomeStreams.reduce(
+    (sum, income) => sum + toMonthlyAmount(income.amount, income.frequency),
+    0
+  )
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Expenses</h1>
-          <p className="text-muted-foreground text-sm">Budgeted expenses across every category.</p>
+          <h1 className="text-2xl font-semibold">Income Streams</h1>
+          <p className="text-muted-foreground text-sm">Track every source of income you rely on.</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openCreateDialog} disabled={categories.length === 0}>
-              <Plus /> Add Expense
+            <Button onClick={openCreateDialog}>
+              <Plus /> Add Income
             </Button>
           </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Expense" : "Add Expense"}</DialogTitle>
+                <DialogTitle>{editingId ? "Edit Income Stream" : "Add Income Stream"}</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
-                  placeholder="e.g. Rent"
+                  placeholder="e.g. Salary"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
                 />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Category</Label>
-                <Select value={form.categoryId} onValueChange={(value) => setForm({ ...form, categoryId: value })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="amount">Amount</Label>
@@ -178,23 +146,6 @@ function Expenses() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="dueDate">Due date</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={form.dueDate}
-                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="isRecurring"
-                  checked={form.isRecurring}
-                  onCheckedChange={(checked) => setForm({ ...form, isRecurring: Boolean(checked) })}
-                />
-                <Label htmlFor="isRecurring">Recurring expense</Label>
-              </div>
               <DialogFooter>
                 <Button type="submit" disabled={saving}>
                   {saving ? "Saving..." : "Save"}
@@ -207,38 +158,36 @@ function Expenses() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Total monthly expenses: {formatCurrency(totalMonthly)}</CardTitle>
+          <CardTitle>Total monthly income: {formatCurrency(totalMonthly)}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-muted-foreground text-sm">Loading...</p>
-          ) : expenses.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No expenses yet. Add your first one to get started.</p>
+          ) : incomeStreams.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No income streams yet. Add your first one to get started.
+            </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Frequency</TableHead>
-                  <TableHead>Due date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {expenses.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell>{expense.name}</TableCell>
-                    <TableCell>{expense.category?.name}</TableCell>
-                    <TableCell>{formatCurrency(expense.amount)}</TableCell>
-                    <TableCell className="capitalize">{expense.frequency}</TableCell>
-                    <TableCell>{expense.dueDate ?? "-"}</TableCell>
+                {incomeStreams.map((income) => (
+                  <TableRow key={income.id}>
+                    <TableCell>{income.name}</TableCell>
+                    <TableCell>{formatCurrency(income.amount)}</TableCell>
+                    <TableCell className="capitalize">{income.frequency}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon-sm" onClick={() => openEditDialog(expense)}>
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEditDialog(income)}>
                         <Pencil />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(expense.id)}>
+                      <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(income.id)}>
                         <Trash2 />
                       </Button>
                     </TableCell>
@@ -253,4 +202,4 @@ function Expenses() {
   )
 }
 
-export default Expenses
+export default IncomeStreams

@@ -34,6 +34,11 @@ function Navbar() {
             </SignUpButton>
           </Show>
           <Show when="signed-in">
+            <Link to="/dashboard">
+              <Button variant="ghost" className="text-slate-300 hover:text-white">
+                Dashboard
+              </Button>
+            </Link>
             <UserButton />
           </Show>
         </div>

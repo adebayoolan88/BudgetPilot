@@ -2,6 +2,8 @@ package dev.adebayoolan.budgetpilot.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +16,7 @@ import dev.adebayoolan.budgetpilot.dto.CreateUserBudget;
 import dev.adebayoolan.budgetpilot.dto.UpdateUserBudget;
 import dev.adebayoolan.budgetpilot.model.BudgetingStrategy;
 import dev.adebayoolan.budgetpilot.model.UserBudget;
+import dev.adebayoolan.budgetpilot.security.AuthenticatedUserService;
 import dev.adebayoolan.budgetpilot.service.UserBudgetService;
 import lombok.RequiredArgsConstructor;
 import java.util.UUID;
@@ -24,9 +27,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserBudgetController {
     private final UserBudgetService userBudgetService;
+    private final AuthenticatedUserService authenticatedUserService;
 
     @PostMapping("")
-    public ResponseEntity<UserBudget> createUserBudget(@RequestBody CreateUserBudget request) {
+    public ResponseEntity<UserBudget> createUserBudget(@AuthenticationPrincipal Jwt jwt,
+            @RequestBody CreateUserBudget request) {
+        authenticatedUserService.requireOwnership(jwt, request.getUserId());
+
         UserBudget userBudget = userBudgetService.createUserBudget(
                 request.getUserId(),
                 request.getStrategyId(),
@@ -37,14 +44,17 @@ public class UserBudgetController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<UserBudget> getUserBudget(@PathVariable UUID userId) {
+    public ResponseEntity<UserBudget> getUserBudget(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID userId) {
+        authenticatedUserService.requireOwnership(jwt, userId);
         return userBudgetService.getUserBudget(userId).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{userId}")
-    public ResponseEntity<UserBudget> updateUserBudget(@PathVariable UUID userId,
+    public ResponseEntity<UserBudget> updateUserBudget(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID userId,
             @RequestBody UpdateUserBudget request) {
+        authenticatedUserService.requireOwnership(jwt, userId);
+
         UserBudget userBudget = userBudgetService.updateUserBudget(
                 userId,
                 request.getNeedsPercent(),
